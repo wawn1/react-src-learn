@@ -1,4 +1,9 @@
-import { HostRoot } from "./ReactWorkTags";
+import {
+  HostComponent,
+  HostRoot,
+  HostText,
+  IndeterminateComponent,
+} from "./ReactWorkTags";
 import { NoFlags } from "./ReactFiberFlags";
 
 /**
@@ -25,15 +30,16 @@ export function FiberNode(tag, pendingProps, key) {
   // 函数组件 hooks
   // 根fiber 要渲染的元素
   this.memoizedState = null;
-  // 状态对应的更新队列
+  // 更新操作队列
   this.updateQueue = null;
 
   // 副作用标记，标识这个fiber要进行什么操作
   this.flags = NoFlags;
   // 子节点有没有副作用的标记，冒泡统计，用于性能优化
   this.subtreeFlags = NoFlags;
-  // 旧的fiber
+  // 新旧fiber互相引用
   this.alternate = null;
+  this.index = 0;
 }
 
 export function createFiber(tag, pendingProps, key) {
@@ -42,4 +48,61 @@ export function createFiber(tag, pendingProps, key) {
 
 export function createHostRootFiber() {
   return createFiber(HostRoot, null, null);
+}
+
+/**
+ * 基于老的fiber和新的属性创建新的fiber
+ * 创建新节点，没有副作用NoFlags
+ * @param {*} current 老fiber
+ * @param {*} pendingProps 新属性
+ */
+export function createWorkInProgress(current, pendingProps) {
+  let workInProgress = current.alternate;
+  if (workInProgress === null) {
+    // 第一次渲染没有备份节点，新fiber是旧fiber的备份，直接创建新fiber
+    workInProgress = createFiber(current.tag, pendingProps, current.key);
+    workInProgress.type = current.type;
+    workInProgress.stateNode = current.stateNode;
+
+    workInProgress.alternate = current;
+    current.alternate = workInProgress;
+  } else {
+    // 复用新fiber树的fiber, 新props
+    workInProgress.pendingProps = pendingProps;
+    workInProgress.type = current.type;
+    workInProgress.flags = NoFlags;
+    workInProgress.subtreeFlags = NoFlags;
+  }
+
+  workInProgress.child = current.child;
+  workInProgress.memoizedProps = current.memoizedProps;
+  workInProgress.memoizedState = current.memoizedState;
+  workInProgress.updateQueue = current.updateQueue;
+  workInProgress.sibling = current.sibling;
+  workInProgress.index = current.index;
+  return workInProgress;
+}
+
+/**
+ * 根据虚拟dom创建fiber
+ * @param {*} element jsx element
+ */
+export function createFiberFromElement(element) {
+  const { type, key, props: pendingProps } = element;
+  return createFiberFromTypeAndProps(type, key, pendingProps);
+}
+
+function createFiberFromTypeAndProps(type, key, pendingProps) {
+  let tag = IndeterminateComponent;
+  // 如果type是字符串 span div 说明是一个原生组件
+  if (typeof type === "string") {
+    tag = HostComponent;
+  }
+  const fiber = createFiber(tag, pendingProps, key);
+  fiber.type = type;
+  return fiber;
+}
+
+export function createFiberFromText(content) {
+  return createFiber(HostText, content, null);
 }

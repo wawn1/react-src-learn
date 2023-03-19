@@ -1,4 +1,5 @@
 import { createHostRootFiber } from "./ReactFiber";
+import { initialUpdateQueue } from "./ReactFiberClassUpdateQueue";
 
 function FiberRootNode(containerInfo) {
   this.containerInfo = containerInfo;
@@ -12,12 +13,14 @@ function FiberRootNode(containerInfo) {
  * @returns FiberRootNode{containerInfo: root dom}
  */
 export function createFiberRoot(containerInfo) {
-  // 根fiber的真实dom 容器dom
+  // 根fiber的真实dom 容器dom FiberRootNode
   const root = new FiberRootNode(containerInfo);
   // 根fiber
   const uninitializedFiber = createHostRootFiber();
   // 互相关联
   root.current = uninitializedFiber;
   uninitializedFiber.stateNode = root;
+
+  initialUpdateQueue(uninitializedFiber);
   return root;
 }
