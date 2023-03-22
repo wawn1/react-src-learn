@@ -30,6 +30,7 @@ function ensureRootIsScheduled(root) {
 function performConcurrentWorkOnRoot(root) {
   // 第一次渲染以同步的方式渲染根节点
   renderRootSync(root);
+  // 此时存在新旧2个fiber树，新树，current的alternate， fiber已经构建好了，dom的props也修改好了
 }
 
 function prepareFreshStack(root) {

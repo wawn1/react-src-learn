@@ -1,7 +1,7 @@
 import { HostComponent, HostRoot, HostText } from "./ReactWorkTags";
 import { procesUpdateQueue } from "./ReactFiberClassUpdateQueue";
 import { mountChildFibers, reconcileChildFibers } from "./ReactChildFiber";
-import { shouldSetTextContent } from "react-dom-bindings/src/ReactDOMHostConfig";
+import { shouldSetTextContent } from "react-dom-bindings/src/client/ReactDOMHostConfig";
 
 /**
  *
