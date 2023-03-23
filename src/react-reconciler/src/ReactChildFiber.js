@@ -110,5 +110,6 @@ function createChildReconciler(shouldTrackSideEffects) {
   return reconcileChildFibers;
 }
 
-export const mountChildFibers = createChildReconciler(true);
-export const reconcileChildFibers = createChildReconciler(false);
+// bugfix: mount 时不追踪effect
+export const mountChildFibers = createChildReconciler(false);
+export const reconcileChildFibers = createChildReconciler(true);

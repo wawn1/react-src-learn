@@ -24,3 +24,7 @@ export function appendInitialChild(parent, child) {
 export function finalizeInitialChildren(domElement, type, props) {
   setInitialProperties(domElement, type, props);
 }
+
+export function insertBefore(parent, child, before) {
+  parent.insertBefore(child, before);
+}
