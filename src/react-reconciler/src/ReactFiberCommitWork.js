@@ -1,6 +1,14 @@
-import { appendInitialChild } from "react-dom-bindings/src/client/ReactDOMHostConfig";
+import {
+  appendChild,
+  insertBefore,
+} from "react-dom-bindings/src/client/ReactDOMHostConfig";
 import { MutationMask, Placement } from "./ReactFiberFlags";
-import { HostComponent, HostRoot, HostText } from "./ReactWorkTags";
+import {
+  FuctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+} from "./ReactWorkTags";
 
 function recursivelyTraverseMutationEffects(root, parentFiber) {
   if (parentFiber.subtreeFlags & MutationMask) {
@@ -78,6 +86,7 @@ function getHostSibling(fiber) {
  * 将dom插入父dom
  *
  * @param {*} node 当前fiber
+ * @param {*} before 当前fiber要插入的位置
  * @param {*} parent 父dom
  */
 function insertOrAppendPlacementNode(node, before, parent) {
@@ -88,16 +97,16 @@ function insertOrAppendPlacementNode(node, before, parent) {
     if (before) {
       insertBefore(parent, stateNode, before);
     } else {
-      appendInitialChild(parent, stateNode);
+      appendChild(parent, stateNode);
     }
   } else {
     const { child } = node;
     if (child !== null) {
-      insertOrAppendPlacementNode(node, parent);
+      insertOrAppendPlacementNode(child, before, parent);
 
       let { sibling } = child;
       while (sibling !== null) {
-        insertOrAppendPlacementNode(sibling, parent);
+        insertOrAppendPlacementNode(sibling, before, parent);
         sibling = sibling.sibling;
       }
     }
@@ -108,7 +117,7 @@ function insertOrAppendPlacementNode(node, before, parent) {
  * 把此fiber的真实dom插入到父dom
  *
  * 当前fiber和父fiber 都可能是没有dom的虚节点
- * @param {*} finishedWork
+ * @param {*} finishedWork 当前fiber
  */
 function commitPlacement(finishedWork) {
   // 找到第一个有dom的父fiber
@@ -139,6 +148,7 @@ function commitPlacement(finishedWork) {
  */
 export function commitMutationEffectsOnFiber(finishedWork, root) {
   switch (finishedWork.tag) {
+    case FuctionComponent:
     case HostRoot:
     case HostComponent:
     case HostText: {

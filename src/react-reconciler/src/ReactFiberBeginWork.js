@@ -1,7 +1,14 @@
-import { HostComponent, HostRoot, HostText } from "./ReactWorkTags";
+import {
+  FuctionComponent,
+  HostComponent,
+  HostRoot,
+  HostText,
+  IndeterminateComponent,
+} from "./ReactWorkTags";
 import { procesUpdateQueue } from "./ReactFiberClassUpdateQueue";
 import { mountChildFibers, reconcileChildFibers } from "./ReactChildFiber";
 import { shouldSetTextContent } from "react-dom-bindings/src/client/ReactDOMHostConfig";
+import { renderWithHooks } from "./ReactFiberHooks";
 
 /**
  *
@@ -52,12 +59,38 @@ function updateHostComponent(current, workInProgress) {
 }
 
 /**
+ * 挂载组件
+ * @param {*} current 老fiber
+ * @param {*} workInProgress 新fiber
+ * @param {*} Component 组件函数
+ */
+export function mountIndeterminateComponent(
+  current,
+  workInProgress,
+  Component
+) {
+  const props = workInProgress.pendingProps;
+  // const value = Component(props);
+  const value = renderWithHooks(current, workInProgress, Component, props);
+  workInProgress.tag = FuctionComponent;
+  reconcileChildren(current, workInProgress, value);
+  return workInProgress.child;
+}
+
+/**
  * 根据jsx element 创建新fiber的直连子链表 child
  * @param {*} current 老fiber
  * @param {*} workInProgress 新的fiber
  */
 export function beginWork(current, workInProgress) {
   switch (workInProgress.tag) {
+    // 因为在eract里组件其实有2种，一种是函数组件，一种是类组件
+    case IndeterminateComponent:
+      return mountIndeterminateComponent(
+        current,
+        workInProgress,
+        workInProgress.type
+      );
     case HostRoot:
       return updateHostRoot(current, workInProgress);
     case HostComponent:

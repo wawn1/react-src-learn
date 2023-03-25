@@ -15,7 +15,7 @@ import { NoFlags } from "./ReactFiberFlags";
 export function FiberNode(tag, pendingProps, key) {
   this.tag = tag; // 函数组件0，类组件1，原生组件5，根fiber3
   this.key = key;
-  this.type = null; // jsx element(虚拟dom)的type, 例如 span div p
+  this.type = null; // jsx element(虚拟dom)的type, 例如 span div p func(类组件，函数组件)
   this.stateNode = null; // fiber对应真实dom的引用
 
   this.return = null; // 指向父fiber
