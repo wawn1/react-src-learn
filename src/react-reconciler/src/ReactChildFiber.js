@@ -55,6 +55,7 @@ function createChildReconciler(shouldTrackSideEffects) {
     if (shouldTrackSideEffects) {
       // Placement 表示创建dom
       newFiber.flags |= Placement;
+      console.log("tag insert. placeChild.", newFiber);
     }
   }
 
@@ -109,6 +110,7 @@ function createChildReconciler(shouldTrackSideEffects) {
   function placeSingleChild(newFiber) {
     if (shouldTrackSideEffects && newFiber.alternate === null) {
       newFiber.flags |= Placement;
+      console.log("tag insert. placeSingleChild.", newFiber);
     }
     return newFiber;
   }

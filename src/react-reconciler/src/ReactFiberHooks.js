@@ -13,11 +13,70 @@ let currentHook = null;
 
 const HooksDispatcherOnMount = {
   useReducer: mountReducer,
+  useState: mountState,
 };
 
 const HooksDispatcherOnUpdate = {
   useReducer: updateReducer,
+  useState: updateState,
 };
+
+// useState其实就是内置了reducer的useReducer
+// action 就是setState的入参，(oldState)=> newState 或者state
+function baseStateReducer(state, action) {
+  return typeof action === "function" ? action(state) : action;
+}
+
+function updateState(initialState) {
+  return updateReducer(baseStateReducer);
+}
+
+// 和mountReducer基本一样
+// setState加了一个优化，如果state没变，则不更新
+function mountState(initialState) {
+  const hook = mountWorkInProgressHook();
+  hook.memoizedState = initialState;
+  const queue = {
+    pending: null,
+    dispatch: null,
+    lastRenderedReducer: baseStateReducer, // 上一个reducer
+    lastRenderedState: initialState, // 上一个state
+  };
+  const dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue);
+  queue.dispatch = dispatch;
+  hook.queue = queue;
+
+  return [hook.memoizedState, dispatch];
+}
+
+/**
+ * 生成setState函数
+ * setState(x=> x+1)  setState(2)
+ * action就是setState传入的参数
+ * @param {*} fiber
+ * @param {*} queue
+ * @param {*} action x=> x+1  2
+ * @returns setState 函数, 参数action
+ */
+function dispatchSetState(fiber, queue, action) {
+  const update = {
+    action,
+    hasEagerState: false, // 是否有提前计算新state
+    eagerState: null, // 新state
+    next: null,
+  };
+  const { lastRenderedReducer, lastRenderedState } = queue;
+  const eagerState = lastRenderedReducer(lastRenderedState, action);
+  update.hasEagerState = true;
+  update.eagerState = eagerState;
+  if (Object.is(eagerState, lastRenderedState)) {
+    return;
+  }
+
+  // setState触发更新
+  const root = enqueueConcurrentHookUpdate(fiber, queue, update);
+  scheduleUpdateOnFiber(root);
+}
 
 /**
  * 组件useReducer的底层函数
@@ -42,9 +101,14 @@ function updateReducer(reducer) {
     const firstUpdate = pendingQueue.next;
     let update = firstUpdate;
     do {
-      const action = update.action;
-      newState = reducer(newState, action);
-      update = update.next;
+      if (update.hasEagerState) {
+        // 如果提前算过了，直接取
+        newState = update.eagerState;
+      } else {
+        const action = update.action;
+        newState = reducer(newState, action);
+        update = update.next;
+      }
     } while (update !== null && update !== firstUpdate);
   }
   hook.memoizedState = newState;
@@ -178,5 +242,6 @@ export function renderWithHooks(current, workInProgress, Component, props) {
   // 函数组件执行完了，hooks都执行完了，变成初始化状态
   currentlyRenderingFiber = null;
   workInProgressHook = null;
+  currentHook = null;
   return children;
 }

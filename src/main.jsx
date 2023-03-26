@@ -7,14 +7,14 @@ function counter(state, action) {
 }
 
 function App() {
-  const [number, setNumber] = React.useReducer(counter, 0);
+  const [number, setNumber] = React.useState(0);
   let attrs = { id: "btn1" };
   if (number === 1) {
     delete attrs.id;
     attrs.style = { color: "red" };
   }
   return (
-    <button {...attrs} onClick={() => setNumber({ type: "add", payload: 1 })}>
+    <button {...attrs} onClick={() => setNumber(number + 1)}>
       {number}
     </button>
   );

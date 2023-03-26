@@ -52,21 +52,29 @@ export function createHostRootFiber() {
 
 /**
  * 基于老的fiber和新的属性创建新的fiber
- * 创建新节点，没有副作用NoFlags
+ * 创建一个fiber，除了props，其他都和入参fiber一样
+ * clone fiber
+ *
+ * 1. 没有alternate, 创建fiber，复用dom
+ * 2. 有alternate, 复用fiber, 复用dom
+ *
  * @param {*} current 老fiber
  * @param {*} pendingProps 新属性
  */
 export function createWorkInProgress(current, pendingProps) {
   let workInProgress = current.alternate;
   if (workInProgress === null) {
+    console.log("clone fiber with dom.", current, pendingProps);
     // 第一次渲染没有备份节点，新fiber是旧fiber的备份，直接创建新fiber
     workInProgress = createFiber(current.tag, pendingProps, current.key);
     workInProgress.type = current.type;
+    // 复用真实dom
     workInProgress.stateNode = current.stateNode;
 
     workInProgress.alternate = current;
     current.alternate = workInProgress;
   } else {
+    console.log("clone fiber use alternate.", current, pendingProps);
     // 复用新fiber树的fiber, 新props
     workInProgress.pendingProps = pendingProps;
     workInProgress.type = current.type;

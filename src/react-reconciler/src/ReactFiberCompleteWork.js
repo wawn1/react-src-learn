@@ -51,6 +51,7 @@ function appendAllChildren(parent, workInProgress) {
 
 function markUpdate(workInProgress) {
   workInProgress.flags |= Update;
+  console.log("tag update. markUpdate. props change.", workInProgress);
 }
 
 /**
