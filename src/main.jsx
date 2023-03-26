@@ -1,23 +1,22 @@
 import { createRoot } from "react-dom/client";
+import * as React from "react";
+
+function counter(state, action) {
+  if (action.type === "add") return state + action.payload;
+  return state;
+}
+
 function App() {
+  const [number, setNumber] = React.useReducer(counter, 0);
+  let attrs = { id: "btn1" };
+  if (number === 1) {
+    delete attrs.id;
+    attrs.style = { color: "red" };
+  }
   return (
-    <h1
-      id="container"
-      onClick={(e) => console.log("h1", e.currentTarget)}
-      onClickCapture={(e) => {
-        console.log("h1 Capture");
-        // e.stopPropagation();
-      }}
-    >
-      hello
-      <span
-        style={{ color: "red" }}
-        onClick={(e) => console.log("span", e.currentTarget)}
-        onClickCapture={() => console.log("span Capture")}
-      >
-        world
-      </span>
-    </h1>
+    <button {...attrs} onClick={() => setNumber({ type: "add", payload: 1 })}>
+      {number}
+    </button>
   );
 }
 

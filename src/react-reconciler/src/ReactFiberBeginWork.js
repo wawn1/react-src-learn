@@ -1,5 +1,5 @@
 import {
-  FuctionComponent,
+  FunctionComponent,
   HostComponent,
   HostRoot,
   HostText,
@@ -72,8 +72,34 @@ export function mountIndeterminateComponent(
   const props = workInProgress.pendingProps;
   // const value = Component(props);
   const value = renderWithHooks(current, workInProgress, Component, props);
-  workInProgress.tag = FuctionComponent;
+  workInProgress.tag = FunctionComponent;
   reconcileChildren(current, workInProgress, value);
+  return workInProgress.child;
+}
+
+/**
+ * 更新函数组件
+ * @param {*} current 老fiber
+ * @param {*} workInProgress 新fiber
+ * @param {*} Component 函数组件
+ * @param {*} newProps 组件props
+ * @returns
+ */
+export function updateFunctionComponent(
+  current,
+  workInProgress,
+  Component,
+  newProps
+) {
+  // 执行一遍函数组件，包含hook的执行
+  const nextChildren = renderWithHooks(
+    current,
+    workInProgress,
+    Component,
+    newProps
+  );
+  // 打flags
+  reconcileChildren(current, workInProgress, nextChildren);
   return workInProgress.child;
 }
 
@@ -91,6 +117,16 @@ export function beginWork(current, workInProgress) {
         workInProgress,
         workInProgress.type
       );
+    case FunctionComponent: {
+      const Component = workInProgress.type;
+      const newProps = workInProgress.pendingProps;
+      return updateFunctionComponent(
+        current,
+        workInProgress,
+        Component,
+        newProps
+      );
+    }
     case HostRoot:
       return updateHostRoot(current, workInProgress);
     case HostComponent:

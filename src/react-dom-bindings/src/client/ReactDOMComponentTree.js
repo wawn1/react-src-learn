@@ -7,7 +7,7 @@ const internalPropsKey = "__reactProp$" + randomKey;
  */
 export function getClosestInstanceFromNode(targetNode) {
   const targetInst = targetNode[internalInstanceKey];
-  return targetInst;
+  return targetInst || null;
 }
 
 /**
@@ -34,5 +34,5 @@ export function updateFiberProps(node, props) {
  * @returns
  */
 export function getFiberCurrentPropsFromNode(node) {
-  return node[internalPropsKey] || null;
+  return node[internalPropsKey] === undefined ? null : node[internalPropsKey];
 }

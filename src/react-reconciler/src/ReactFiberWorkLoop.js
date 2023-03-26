@@ -4,9 +4,13 @@ import { beginWork } from "./ReactFiberBeginWork";
 import { completeWork } from "./ReactFiberCompleteWork";
 import { MutationMask, NoFlags } from "./ReactFiberFlags";
 import { commitMutationEffectsOnFiber } from "./ReactFiberCommitWork";
+import { finishQueueingConcurrentUpdates } from "./ReactFiberConcurrentUpdates";
 
 // FiberRootNode.current指向旧fiber树，workInProgress指向新fiber树
 let workInProgress = null;
+
+// 一次工作完成才能再次执行
+let isWorking = false;
 
 /**
  *
@@ -17,6 +21,8 @@ export function scheduleUpdateOnFiber(root) {
 }
 
 function ensureRootIsScheduled(root) {
+  if (isWorking) return;
+  isWorking = true;
   // 1帧内如果空闲就执行performConcurrentWorkOnRoot
   scheduleCallback(performConcurrentWorkOnRoot.bind(null, root));
 }
@@ -37,14 +43,22 @@ function performConcurrentWorkOnRoot(root) {
   const finishedWork = root.current.alternate;
   root.finishedWork = finishedWork;
   commitRoot(root);
+
+  isWorking = false;
 }
 
+/**
+ * 1. 创建新fiber树的 根fiber
+ * 2. 将平摊的3元组update, 挂载到对应hook的更新队列
+ * @param {*} root
+ */
 function prepareFreshStack(root) {
   workInProgress = createWorkInProgress(root.current, null);
+  finishQueueingConcurrentUpdates();
 }
 
 function renderRootSync(root) {
-  // 创建新fiber树的 根fiber
+  // 准备数据
   prepareFreshStack(root);
   // dfs 遍历新的fiber树
   // mount时，边遍历边生成，遍历一个fiber，生成children fiber链表
