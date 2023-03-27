@@ -39,7 +39,10 @@ export function FiberNode(tag, pendingProps, key) {
   this.subtreeFlags = NoFlags;
   // 新旧fiber互相引用
   this.alternate = null;
+  // dom-diff 移动
   this.index = 0;
+  // 子fiber删除数组
+  this.deletions = null;
 }
 
 export function createFiber(tag, pendingProps, key) {

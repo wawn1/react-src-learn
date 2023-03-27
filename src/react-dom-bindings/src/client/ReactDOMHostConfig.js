@@ -72,3 +72,12 @@ export function commitUpdate(
   );
   updateFiberProps(domElement, newProps);
 }
+
+/**
+ * 删除parentInstance的child dom
+ * @param {*} parentInstance parent dom
+ * @param {*} child child dom
+ */
+export function removeChild(parentInstance, child) {
+  parentInstance.removeChild(child);
+}

@@ -8,15 +8,24 @@ function counter(state, action) {
 
 function App() {
   const [number, setNumber] = React.useState(0);
-  let attrs = { id: "btn1" };
-  if (number === 1) {
-    delete attrs.id;
-    attrs.style = { color: "red" };
-  }
-  return (
-    <button {...attrs} onClick={() => setNumber(number + 1)}>
-      {number}
-    </button>
+  return number === 0 ? (
+    <ul key="container" onClick={() => setNumber(number + 1)}>
+      <li key="A" id="A">
+        A
+      </li>
+      <li key="B" id="B">
+        B
+      </li>
+      <li key="C" id="C">
+        C
+      </li>
+    </ul>
+  ) : (
+    <ul key="container" onClick={() => setNumber(number + 1)}>
+      <li key="B" id="B2">
+        B
+      </li>
+    </ul>
   );
 }
 
