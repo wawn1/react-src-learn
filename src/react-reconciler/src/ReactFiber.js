@@ -67,7 +67,7 @@ export function createHostRootFiber() {
 export function createWorkInProgress(current, pendingProps) {
   let workInProgress = current.alternate;
   if (workInProgress === null) {
-    console.log("clone fiber with dom.", current, pendingProps);
+    console.log("copy fiber reuse old dom.", current, pendingProps);
     // 第一次渲染没有备份节点，新fiber是旧fiber的备份，直接创建新fiber
     workInProgress = createFiber(current.tag, pendingProps, current.key);
     workInProgress.type = current.type;
@@ -77,7 +77,7 @@ export function createWorkInProgress(current, pendingProps) {
     workInProgress.alternate = current;
     current.alternate = workInProgress;
   } else {
-    console.log("clone fiber use alternate.", current, pendingProps);
+    console.log("copy fiber reuse old fiber.", current, pendingProps);
     // 复用新fiber树的fiber, 新props
     workInProgress.pendingProps = pendingProps;
     workInProgress.type = current.type;

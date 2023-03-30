@@ -51,7 +51,10 @@ function appendAllChildren(parent, workInProgress) {
 
 function markUpdate(workInProgress) {
   workInProgress.flags |= Update;
-  console.log("tag update. markUpdate. props change.", workInProgress);
+  console.log(
+    "tag update. markUpdate. props change. updateQueue.",
+    workInProgress.updateQueue
+  );
 }
 
 /**
@@ -68,7 +71,6 @@ function updateHostComponent(current, workInProgress, type, newProps) {
 
   // 比较新老属性，产生update, update是二元组的数组 属性，值，属性，值
   const updatePayload = prepareUpdate(instance, type, oldProps, newProps);
-  console.log("updatePayload", updatePayload);
   workInProgress.updateQueue = updatePayload;
   if (updatePayload) {
     markUpdate(workInProgress);

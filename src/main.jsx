@@ -13,17 +13,42 @@ function App() {
       <li key="A" id="A">
         A
       </li>
-      <li key="B" id="B">
+      <li key="B" id="b">
         B
       </li>
       <li key="C" id="C">
         C
       </li>
+      <li key="D" id="D">
+        D
+      </li>
+      <li key="E" id="E">
+        E
+      </li>
+      <li key="F" id="F">
+        F
+      </li>
     </ul>
   ) : (
     <ul key="container" onClick={() => setNumber(number + 1)}>
-      <li key="B" id="B2">
-        B
+      <li key="A" id="A">
+        A2
+      </li>
+
+      <li key="C" id="C">
+        C2
+      </li>
+      <li key="E" id="E">
+        E2
+      </li>
+      <li key="B" id="b2">
+        B2
+      </li>
+      <li key="G" id="G">
+        G
+      </li>
+      <li key="D" id="D">
+        D
       </li>
     </ul>
   );
