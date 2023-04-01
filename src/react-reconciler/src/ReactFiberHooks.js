@@ -268,6 +268,7 @@ function updateReducer(reducer) {
     } while (update !== null && update !== firstUpdate);
   }
   hook.memoizedState = newState;
+  queue.lastRenderedState = newState;
   return [hook.memoizedState, queue.dispatch];
 }
 
