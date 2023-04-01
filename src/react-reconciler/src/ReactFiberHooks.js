@@ -1,6 +1,15 @@
 import ReactSharedInternals from "shared/ReactSharedInternals";
 import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
 import { enqueueConcurrentHookUpdate } from "./ReactFiberConcurrentUpdates";
+import {
+  Passive as PassiveEffect,
+  Update as UpdateEffect,
+} from "./ReactFiberFlags";
+import {
+  HasEffect as HookHasEffect,
+  Passive as HookPassive,
+  Layout as HookLayout,
+} from "./ReactHookEffectTags";
 
 const { ReactCurrentDispatcher } = ReactSharedInternals;
 
@@ -9,17 +18,163 @@ let workInProgressHook = null;
 // 当前fiber currentlyRenderingFiber.memoizedState hook单向链表 第一个
 let currentlyRenderingFiber = null;
 
+// 老hook
 let currentHook = null;
 
 const HooksDispatcherOnMount = {
   useReducer: mountReducer,
   useState: mountState,
+  useEffect: mountEffect,
+  useLayoutEffect: mountLayoutEffect,
 };
 
 const HooksDispatcherOnUpdate = {
   useReducer: updateReducer,
   useState: updateState,
+  useEffect: updateEffect,
+  useLayoutEffect: updateLayoutEffect,
 };
+
+function mountLayoutEffect(create, deps) {
+  // 标记fiber Update, 标记hook layout effect
+  return mountEffectImpl(UpdateEffect, HookLayout, create, deps);
+}
+
+function updateLayoutEffect(create, deps) {
+  return updateEffectImpl(UpdateEffect, HookLayout, create, deps);
+}
+
+function updateEffect(create, deps) {
+  return updateEffectImpl(PassiveEffect, HookPassive, create, deps);
+}
+
+function updateEffectImpl(fiberFlags, hookFlags, create, deps) {
+  // 复制老hook 生成新hook
+  const hook = updateWorkInProgressHook();
+  const nextDeps = deps === undefined ? null : deps;
+  let destroy;
+  if (currentHook !== null) {
+    // 获取老的useEffect hook的，老的effect对象
+    const prevEffect = currentHook.memoizedState;
+    destroy = prevEffect.destroy;
+    if (nextDeps !== null) {
+      const prevDeps = prevEffect.deps;
+      if (areHookInputsEqual(nextDeps, prevDeps)) {
+        // 复制effect, 更新hook.memoizedState 和 构建新的fiber的effect链表
+        // 不管要不要重新执行，都要创建新的effect对象，构建新的effect链表，fiber.updateQueue.lastEffect
+        // passive 类型
+        hook.memoizedState = pushEffect(hookFlags, create, destroy, nextDeps);
+        return;
+      }
+    }
+  }
+  // 如果要执行effect，加HookHasEffect，表示有hook
+  currentlyRenderingFiber.flags |= fiberFlags;
+  hook.memoizedState = pushEffect(
+    HookHasEffect | hookFlags,
+    create,
+    destroy,
+    nextDeps
+  );
+}
+
+// 浅比较dependence 数组
+function areHookInputsEqual(nextDeps, prevDeps) {
+  if (prevDeps === null) {
+    return null;
+  }
+  for (let i = 0; i < prevDeps.length && i < nextDeps.length; i++) {
+    if (Object.is(nextDeps[i], prevDeps[i])) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
+/**
+ * 数据结构关系
+ * fiber.memoizedState 指向hook 链表的第一个，hook链表中一些是effect hook
+ * fiber.updateQueue.lastEffect  指向effect循环链表最后一个位置
+ *
+ * useState, 状态和更新都挂在hook上
+ * 但是useEffect, effect函数挂在fiber.updateQueue.lastEffect上
+ *
+ * useEffect 函数
+ * @param {*} create
+ * @param {*} deps
+ * @returns
+ */
+function mountEffect(create, deps) {
+  return mountEffectImpl(PassiveEffect, HookPassive, create, deps);
+}
+
+/**
+ * 创建hook，挂到hook链表里
+ * 给hook的fiber 加flags 表示组件里用到useEffect
+ *
+ * @param {*} fiberFlags fiber effect flag
+ * @param {*} hookFlags hook effect flag
+ * @param {*} create useEffect create函数
+ * @param {*} deps useEffect deps依赖
+ */
+function mountEffectImpl(fiberFlags, hookFlags, create, deps) {
+  // 创建hook，加入hook链表
+  const hook = mountWorkInProgressHook();
+  // 下一个依赖
+  const nextDeps = deps === undefined ? null : deps;
+  // 给fiber打tag, 表示有useEffect
+  currentlyRenderingFiber.flags |= fiberFlags;
+  // 创建effect,挂在fiber的effect链表
+  // 将effect放到useEffect hook的状态  hook.memoizedState
+  hook.memoizedState = pushEffect(
+    HookHasEffect | hookFlags,
+    create,
+    undefined,
+    nextDeps
+  );
+}
+
+/**
+ * fiber.updateQueue.lastEffect 指向循环链表末尾
+ * 创建effect,并加入到循环链表末尾
+ * @param {*} tag effect flag (passive/layout HasEffect)
+ * @param {*} create useEffect创建函数
+ * @param {*} destroy useEffect销毁函数
+ * @param {*} deps useEffect依赖数组
+ */
+function pushEffect(tag, create, destroy, deps) {
+  const effect = {
+    tag,
+    create,
+    destroy,
+    deps,
+    next: null,
+  };
+  let componentUpdateQueue = currentlyRenderingFiber.updateQueue;
+  if (componentUpdateQueue === null) {
+    componentUpdateQueue = createFunctionComponentUpdateQueue();
+    currentlyRenderingFiber.updateQueue = componentUpdateQueue;
+    componentUpdateQueue.lastEffect = effect.next = effect;
+  } else {
+    const lastEffect = componentUpdateQueue.lastEffect;
+    if (lastEffect === null) {
+      componentUpdateQueue.lastEffect = effect.next = effect;
+    } else {
+      const firstEffect = lastEffect.next;
+      lastEffect.next = effect;
+      effect.next = firstEffect;
+      componentUpdateQueue.lastEffect = effect;
+    }
+  }
+  return effect;
+}
+
+function createFunctionComponentUpdateQueue() {
+  return {
+    lastEffect: null,
+  };
+}
 
 // useState其实就是内置了reducer的useReducer
 // action 就是setState的入参，(oldState)=> newState 或者state
@@ -92,6 +247,7 @@ function updateReducer(reducer) {
   const queue = hook.queue;
   // 老的hook
   const current = currentHook;
+  console.log("执行hook更新队列hook.queue，更新state", queue);
 
   // 基于老state, 执行reducer，计算newState
   const pendingQueue = queue.pending;
@@ -130,6 +286,7 @@ function updateWorkInProgressHook() {
     // 下一个老hook
     currentHook = currentHook.next;
   }
+  console.log("copy old hook", currentHook);
 
   // 复制旧hook
   const newHook = {
@@ -143,8 +300,8 @@ function updateWorkInProgressHook() {
     // fiber的状态是hook链表第一个节点
     currentlyRenderingFiber.memoizedState = newHook;
   } else {
-    workInProgressHook = newHook;
     workInProgressHook.next = newHook;
+    workInProgressHook = newHook;
   }
   return workInProgressHook;
 }
@@ -225,6 +382,8 @@ function mountWorkInProgressHook() {
 export function renderWithHooks(current, workInProgress, Component, props) {
   // 当前hook的fiber
   currentlyRenderingFiber = workInProgress;
+  // 清空effect链表
+  workInProgress.updateQueue = null;
 
   // 先记录obj{useReducer}  到共享对象 ReactCurrentDispatcher.current
   // 函数组件useReducer这里的useReducer 的装饰函数
@@ -237,6 +396,7 @@ export function renderWithHooks(current, workInProgress, Component, props) {
   }
 
   // 执行函数组件
+  console.log("run function component and hook", currentlyRenderingFiber);
   const children = Component(props);
 
   // 函数组件执行完了，hooks都执行完了，变成初始化状态

@@ -2,8 +2,13 @@ import { scheduleCallback } from "scheduler";
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
 import { completeWork } from "./ReactFiberCompleteWork";
-import { MutationMask, NoFlags } from "./ReactFiberFlags";
-import { commitMutationEffectsOnFiber } from "./ReactFiberCommitWork";
+import { MutationMask, NoFlags, Passive } from "./ReactFiberFlags";
+import {
+  commitMutationEffectsOnFiber, // 执行dom effect
+  commitPassiveUnmountEffects, // 执行 useEffect destroy
+  commitPassiveMountEffects, // 执行 useEffect create
+  commitLayoutEffects,
+} from "./ReactFiberCommitWork";
 import { finishQueueingConcurrentUpdates } from "./ReactFiberConcurrentUpdates";
 
 // FiberRootNode.current指向旧fiber树，workInProgress指向新fiber树
@@ -11,6 +16,13 @@ let workInProgress = null;
 
 // 一次工作完成才能再次执行
 let isWorking = false;
+
+// 如果rootDoesHavePassiveEffect是true, 就缓存root到rootWithPendingPassiveEffects
+let rootDoesHavePassiveEffect = false;
+
+// 根节点 FiberRootNode root
+// 由于effect是下一个宏任务执行，异步的，所以先缓存下来
+let rootWithPendingPassiveEffects = null;
 
 /**
  *
@@ -106,14 +118,55 @@ function completeUnitOfWork(unitOfWork) {
   } while (completedWork !== null);
 }
 
+function flushPassiveEffect() {
+  if (rootWithPendingPassiveEffects !== null) {
+    // 缓存中取root
+    const root = rootWithPendingPassiveEffects;
+    // 执行卸载副作用，useEffect的destroy
+    commitPassiveUnmountEffects(root.current);
+    // 执行挂载副作用，useEffect的create
+    commitPassiveMountEffects(root, root.current);
+  }
+}
+
 function commitRoot(root) {
+  console.log("commitRoot~~~~~~~~~~~~~~~~~~~~~~~~~~~");
   const { finishedWork } = root; // finishedWork 新fiber树的根fiber, root是FiberRootNode
+
+  // 如果子树或者自己有 effect副作用
+  if (
+    (finishedWork.subtreeFlags & Passive) !== NoFlags ||
+    (finishedWork.flags & Passive) !== NoFlags
+  ) {
+    if (!rootDoesHavePassiveEffect) {
+      // 标记根root 有effect
+      rootDoesHavePassiveEffect = true;
+      // scheduleCallback执行时机 requestIdleCallback，在渲染之后执行，宏任务
+      // 执行栈清空 => 微任务队列清空
+      // => resize回调 => scroll回调 => requestAnimationFrame
+      // => 渲染（dom操作，layout, paint）
+      // => requestIdleCallback => 宏任务取一个放到执行栈
+      // 当次render前不执行，render完后执行，下一个render生效
+      scheduleCallback(flushPassiveEffect);
+    }
+  }
+
+  // 判断子树有没有副作用
   const subtreeHasEffects =
     (finishedWork.subtreeFlags & MutationMask) !== NoFlags;
   const rootHasEffects = (finishedWork.flags & MutationMask) !== NoFlags;
   // 如果自己有副作用或者子节点有副作用就提交dom操作
   if (subtreeHasEffects || rootHasEffects) {
+    // dom变更后 只是改了dom, 浏览器后面执行渲染
     commitMutationEffectsOnFiber(finishedWork, root);
+    // 执行layout effect create
+    console.log("recursive run layout effect create");
+    commitLayoutEffects(finishedWork, root);
+    // 如果有effect 缓存root
+    if (rootDoesHavePassiveEffect) {
+      rootDoesHavePassiveEffect = false;
+      rootWithPendingPassiveEffects = root;
+    }
   }
   // current指向新fiber树
   root.current = finishedWork;

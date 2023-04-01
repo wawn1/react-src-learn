@@ -4,13 +4,24 @@ import {
   commitUpdate,
   removeChild,
 } from "react-dom-bindings/src/client/ReactDOMHostConfig";
-import { MutationMask, Placement, Update } from "./ReactFiberFlags";
+import {
+  MutationMask,
+  Placement,
+  Update,
+  Passive,
+  LayoutMask,
+} from "./ReactFiberFlags";
 import {
   FunctionComponent,
   HostComponent,
   HostRoot,
   HostText,
 } from "./ReactWorkTags";
+import {
+  HasEffect as HookHasEffect,
+  Passive as HookPassive,
+  Layout as HookLayout,
+} from "./ReactHookEffectTags";
 
 let hostParent = null;
 
@@ -249,7 +260,18 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
   const flags = finishedWork.flags;
 
   switch (finishedWork.tag) {
-    case FunctionComponent:
+    case FunctionComponent: {
+      // 先处理子节点副作用 递归
+      recursivelyTraverseMutationEffects(root, finishedWork);
+      // 处理自身的副作用
+      commitReconciliationEffects(finishedWork);
+      // 执行useLayoutEffect 的destroy
+      if (flags & Update) {
+        console.log("recursive run layout effect destroy");
+        commitHookEffectListUnmount(HookHasEffect | HookLayout, finishedWork);
+      }
+      break;
+    }
     case HostRoot:
     case HostText: {
       // 先处理子节点副作用 递归
@@ -291,5 +313,179 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
     }
     default:
       break;
+  }
+}
+
+// 递归执行fiber树的所有fiber的effect链表的destroy
+export function commitPassiveUnmountEffects(finishedWork) {
+  console.log("recursive run effect destroy");
+  commitPassiveUnmountOnFiber(finishedWork);
+}
+
+function commitPassiveUnmountOnFiber(finishedWork) {
+  const flags = finishedWork.flags;
+  switch (finishedWork.tag) {
+    case HostRoot: {
+      recursivelyTraversePassiveUnmountEffects(finishedWork);
+      break;
+    }
+    case FunctionComponent: {
+      recursivelyTraversePassiveUnmountEffects(finishedWork);
+      if (flags & Passive) {
+        commitHookPassiveUnmountEffects(
+          finishedWork,
+          HookHasEffect | HookPassive
+        );
+      }
+      break;
+    }
+  }
+}
+
+// 递归fiber树所有节点
+function recursivelyTraversePassiveUnmountEffects(parentFiber) {
+  if (parentFiber.subtreeFlags & Passive) {
+    let child = parentFiber.child;
+    while (child !== null) {
+      commitPassiveUnmountOnFiber(child);
+      child = child.sibling;
+    }
+  }
+}
+
+/**
+ * 执行fiber effect链表的destory
+ * @param {*} finishedWork fiber
+ * @param {*} hookFlags 9 HookHasEffect | HookPassive
+ */
+function commitHookPassiveUnmountEffects(finishedWork, hookFlags) {
+  commitHookEffectListUnmount(hookFlags, finishedWork);
+}
+
+function commitHookEffectListUnmount(flags, finishedWork) {
+  const updateQueue = finishedWork.updateQueue;
+  const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+  if (lastEffect !== null) {
+    const firstEffect = lastEffect.next;
+    let effect = firstEffect;
+    do {
+      if ((effect.tag & flags) === flags) {
+        const destroy = effect.destroy;
+        // 由于先执行destroy, 再执行create。第一次执行时没有desctroy
+        if (destroy) {
+          destroy();
+        }
+      }
+      effect = effect.next;
+    } while (effect !== firstEffect);
+  }
+}
+
+// 递归执行fiber树的所有fiber的effect链表的create
+export function commitPassiveMountEffects(root, finishedWork) {
+  console.log("recursive run effect create");
+  commitPassiveMountOnFiber(root, finishedWork);
+}
+
+/**
+ * 递归执行fiber树的所有fiber的effect链表
+ * @param {*} finishedRoot root FiberRootNode
+ * @param {*} finishedWork root.current HostRootFiber
+ */
+function commitPassiveMountOnFiber(finishedRoot, finishedWork) {
+  const flags = finishedWork.flags;
+  switch (finishedWork.tag) {
+    case HostRoot: {
+      recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork);
+      break;
+    }
+    case FunctionComponent: {
+      recursivelyTraversePassiveMountEffects(finishedRoot, finishedWork);
+      if (flags & Passive) {
+        // Passive 1024  多一步执行effect链表
+        commitHookPassiveMountEffects(
+          finishedWork,
+          HookPassive | HookHasEffect
+        );
+      }
+      break;
+    }
+  }
+}
+
+// 递归fiber树所有节点
+function recursivelyTraversePassiveMountEffects(root, parentFiber) {
+  if (parentFiber.subtreeFlags & Passive) {
+    let child = parentFiber.child;
+    while (child !== null) {
+      commitPassiveMountOnFiber(root, child);
+      child = child.sibling;
+    }
+  }
+}
+
+function commitHookPassiveMountEffects(finishedWork, hookFlags) {
+  commitHookEffectListMount(hookFlags, finishedWork);
+}
+
+/**
+ * 执行fiber的effect链表
+ * finishedWork.updateQueue.lastEffect 指向effect循环链表最后一个
+ * @param {*} flags 9 HookPassive | HookHasEffect
+ * @param {*} finishedWork fiber
+ */
+function commitHookEffectListMount(flags, finishedWork) {
+  const updateQueue = finishedWork.updateQueue;
+  const lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;
+  if (lastEffect !== null) {
+    const firstEffect = lastEffect.next;
+    let effect = firstEffect;
+    do {
+      if ((effect.tag & flags) === flags) {
+        const create = effect.create;
+        effect.destroy = create();
+      }
+      effect = effect.next;
+    } while (effect !== firstEffect);
+  }
+}
+
+export function commitLayoutEffects(finishedWork, root) {
+  // 老fiber
+  const current = finishedWork.alternate;
+  commitLayoutEffectOnFiber(root, current, finishedWork);
+}
+
+// 递归执行所有fiber的layout effect链表
+function commitLayoutEffectOnFiber(finishedRoot, current, finishedWork) {
+  const flags = finishedWork.flags;
+  switch (finishedWork.tag) {
+    case HostRoot: {
+      recursivelyTraverseLayoutEffects(finishedRoot, finishedWork);
+      break;
+    }
+    case FunctionComponent: {
+      recursivelyTraverseLayoutEffects(finishedRoot, finishedWork);
+      if (flags & LayoutMask) {
+        // Passive 1024  多一步执行effect链表
+        commitHookLayoutEffects(finishedWork, HookHasEffect | HookLayout);
+      }
+      break;
+    }
+  }
+}
+
+function commitHookLayoutEffects(finishedWork, hookFlags) {
+  commitHookEffectListMount(hookFlags, finishedWork);
+}
+
+function recursivelyTraverseLayoutEffects(root, parentFiber) {
+  if (parentFiber.subtreeFlags & LayoutMask) {
+    let child = parentFiber.child;
+    while (child !== null) {
+      const current = child.alternate;
+      commitLayoutEffectOnFiber(root, current, child);
+      child = child.sibling;
+    }
   }
 }

@@ -109,6 +109,7 @@ export function updateFunctionComponent(
  * @param {*} workInProgress 新的fiber
  */
 export function beginWork(current, workInProgress) {
+  console.log("beginWork", current);
   switch (workInProgress.tag) {
     // 因为在eract里组件其实有2种，一种是函数组件，一种是类组件
     case IndeterminateComponent:

@@ -83,6 +83,7 @@ function updateHostComponent(current, workInProgress, type, newProps) {
  * @param {*} workInProgress 新fiber
  */
 export function completeWork(current, workInProgress) {
+  console.log("completeWork", current);
   const newProps = workInProgress.pendingProps;
   switch (workInProgress.tag) {
     case HostRoot:
