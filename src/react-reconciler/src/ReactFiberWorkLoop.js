@@ -1,4 +1,8 @@
-import { scheduleCallback } from "scheduler";
+import {
+  scheduleCallback,
+  NormalPriority as NormalSchedulerPriority,
+  shouldYield,
+} from "scheduler";
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
 import { completeWork } from "./ReactFiberCompleteWork";
@@ -36,7 +40,10 @@ function ensureRootIsScheduled(root) {
   if (isWorking) return;
   isWorking = true;
   // 1帧内如果空闲就执行performConcurrentWorkOnRoot
-  scheduleCallback(performConcurrentWorkOnRoot.bind(null, root));
+  scheduleCallback(
+    NormalSchedulerPriority,
+    performConcurrentWorkOnRoot.bind(null, root)
+  );
 }
 
 /**
@@ -47,7 +54,7 @@ function ensureRootIsScheduled(root) {
  *
  * @param {*} root
  */
-function performConcurrentWorkOnRoot(root) {
+function performConcurrentWorkOnRoot(root, timeout) {
   // 第一次渲染以同步的方式渲染根节点
   renderRootSync(root);
   // 此时存在新旧2个fiber树，新树，current的alternate， fiber已经构建好了，dom也创建好了，dom的props也修改好了
@@ -81,6 +88,13 @@ function renderRootSync(root) {
 // dfs completeWork 左右中 无child就可以开始
 function workLoopSync() {
   while (workInProgress !== null) {
+    performUnitOfWork(workInProgress);
+  }
+}
+
+function workLoopConcurrent() {
+  // 如果有下一个要构建的fiber，并且时间片没有过期
+  while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress);
   }
 }
@@ -147,7 +161,7 @@ function commitRoot(root) {
       // => 渲染（dom操作，layout, paint）
       // => requestIdleCallback => 宏任务取一个放到执行栈
       // 当次render前不执行，render完后执行，下一个render生效
-      scheduleCallback(flushPassiveEffect);
+      scheduleCallback(NormalSchedulerPriority, flushPassiveEffect);
     }
   }
 

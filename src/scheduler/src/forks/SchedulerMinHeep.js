@@ -95,3 +95,5 @@ function compare(a, b) {
   const diff = a.sortIndex - b.sortIndex;
   return diff !== 0 ? diff : a.id - b.id;
 }
+
+export { push, peek, pop, siftDown, siftUp, compare };
