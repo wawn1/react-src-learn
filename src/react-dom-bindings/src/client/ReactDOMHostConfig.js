@@ -4,6 +4,9 @@ import {
   updateProperties,
 } from "./ReactDOMComponent";
 import { precacheFiberNode, updateFiberProps } from "./ReactDOMComponentTree";
+import { DefaultEventPriority } from "react-reconciler/src/ReactEventPriorities";
+import { getEventPriority } from "../events/ReactDOMEventListener";
+
 export function shouldSetTextContent(type, props) {
   return (
     typeof props.children === "string" || typeof props.children === "number"
@@ -80,4 +83,15 @@ export function commitUpdate(
  */
 export function removeChild(parentInstance, child) {
   parentInstance.removeChild(child);
+}
+
+// 获取事件优先级
+export function getCurrentEventPriority() {
+  const currentEvent = window.event;
+  if (currentEvent === undefined) {
+    // 没有事件就是默认事件优先级
+    return DefaultEventPriority;
+  }
+  // 不同事件类型，事件优先级不同
+  return getEventPriority(currentEvent.type);
 }

@@ -13,6 +13,19 @@ import {
 
 const { ReactCurrentDispatcher } = ReactSharedInternals;
 
+/**
+ *
+ * setState 执行时机？
+ * 1. setState=>执行 dispatchReducerAction => 将update暂存到concurrentQueues
+ * 2. setState => scheduleUpdateOnFiber root上执行更新=> performConcurrentWorkOnRoot => renderRootSync
+ * a) => prepareFreshStack 将update 挂载到对应hook的queue
+ * b) => workLoopSync => performUnitOfWork => beginWork => renderWithHooks => 执行component => 执行useState => 执行updateReducer(执行hook.queue)
+ *
+ * effect执行时机？
+ * 1. updateEffect => 生成effect放到 fiber.updateQueue.lastEffect
+ * 2. 等render后，commitRoot => 下一个宏任务执行 flushPassiveEffect
+ */
+
 // hook单向链表 最后一个
 let workInProgressHook = null;
 // 当前fiber currentlyRenderingFiber.memoizedState hook单向链表 第一个

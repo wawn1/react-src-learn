@@ -29,7 +29,7 @@ function App() {
   return <button onClick={() => setNumber(number + 1)}>{number}</button>;
 }
 
-let element = <App />;
+let element = <h1>Hello</h1>;
 const root = createRoot(document.getElementById("root"));
 root.render(element);
 console.log(root);

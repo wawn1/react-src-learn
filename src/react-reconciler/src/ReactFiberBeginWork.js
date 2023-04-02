@@ -5,7 +5,10 @@ import {
   HostText,
   IndeterminateComponent,
 } from "./ReactWorkTags";
-import { procesUpdateQueue } from "./ReactFiberClassUpdateQueue";
+import {
+  processUpdateQueue,
+  cloneUpdateQueue,
+} from "./ReactFiberClassUpdateQueue";
 import { mountChildFibers, reconcileChildFibers } from "./ReactChildFiber";
 import { shouldSetTextContent } from "react-dom-bindings/src/client/ReactDOMHostConfig";
 import { renderWithHooks } from "./ReactFiberHooks";
@@ -30,9 +33,11 @@ function reconcileChildren(current, workInProgress, nextChildren) {
   }
 }
 
-function updateHostRoot(current, workInProgress) {
+function updateHostRoot(current, workInProgress, renderLanes) {
+  const nextProps = workInProgress.pendingProps;
+  cloneUpdateQueue(current, workInProgress);
   // mount时, 将update {payload: element} 放到workInProgress.memoizedState = {element}
-  procesUpdateQueue(workInProgress);
+  processUpdateQueue(workInProgress, nextProps, renderLanes);
   const nextState = workInProgress.memoizedState;
   // HostRootFiber特殊，stateNode已经有了，绑定真实dom是FiberRootNode
   // update中的element, 对应构建出的fiber, 是HostRootFiber.child
@@ -44,7 +49,7 @@ function updateHostRoot(current, workInProgress) {
   return workInProgress.child;
 }
 
-function updateHostComponent(current, workInProgress) {
+function updateHostComponent(current, workInProgress, renderLanes) {
   const { type } = workInProgress;
   const nextProps = workInProgress.pendingProps;
   let nextChildren = nextProps.children;
@@ -67,7 +72,8 @@ function updateHostComponent(current, workInProgress) {
 export function mountIndeterminateComponent(
   current,
   workInProgress,
-  Component
+  Component,
+  renderLanes
 ) {
   const props = workInProgress.pendingProps;
   // const value = Component(props);
@@ -89,7 +95,8 @@ export function updateFunctionComponent(
   current,
   workInProgress,
   Component,
-  newProps
+  newProps,
+  renderLanes
 ) {
   // 执行一遍函数组件，包含hook的执行
   const nextChildren = renderWithHooks(
@@ -108,7 +115,7 @@ export function updateFunctionComponent(
  * @param {*} current 老fiber
  * @param {*} workInProgress 新的fiber
  */
-export function beginWork(current, workInProgress) {
+export function beginWork(current, workInProgress, renderLanes) {
   console.log("beginWork", current);
   switch (workInProgress.tag) {
     // 因为在eract里组件其实有2种，一种是函数组件，一种是类组件
@@ -116,7 +123,8 @@ export function beginWork(current, workInProgress) {
       return mountIndeterminateComponent(
         current,
         workInProgress,
-        workInProgress.type
+        workInProgress.type,
+        renderLanes
       );
     case FunctionComponent: {
       const Component = workInProgress.type;
@@ -125,13 +133,14 @@ export function beginWork(current, workInProgress) {
         current,
         workInProgress,
         Component,
-        newProps
+        newProps,
+        renderLanes
       );
     }
     case HostRoot:
-      return updateHostRoot(current, workInProgress);
+      return updateHostRoot(current, workInProgress, renderLanes);
     case HostComponent:
-      return updateHostComponent(current, workInProgress);
+      return updateHostComponent(current, workInProgress, renderLanes);
     case HostText:
       return null;
     default:

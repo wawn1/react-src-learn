@@ -72,7 +72,7 @@ let scheduleHostCallback = null; // flushWork workLoop
 // 开始执行任务队列的开始时间
 let startTime = -1;
 
-// react每一帧申请5ms用于执行任务
+// react每次申请5ms时间片，然后释放，释放后浏览器渲染线程可以执行渲染
 const frameInterval = 5;
 
 // 替代requestIdleCallback
@@ -224,10 +224,11 @@ function performWorkUntilDeadline() {
 }
 
 export {
-  shouldYieldToHost as shouldYield,
-  ImmediatePriority,
-  UserBlockingPriority,
-  NormalPriority,
-  LowPriority,
-  IdlePriority,
+  scheduleCallback as unstable_scheduleCallback,
+  shouldYieldToHost as unstable_shouldYield,
+  ImmediatePriority as unstable_ImmediatePriority,
+  UserBlockingPriority as unstable_UserBlockingPriority,
+  NormalPriority as unstable_NormalPriority,
+  LowPriority as unstable_LowPriority,
+  IdlePriority as unstable_IdlePriority,
 };
