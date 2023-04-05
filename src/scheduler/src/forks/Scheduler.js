@@ -149,14 +149,21 @@ function workLoop(startTime) {
   while (currentTask !== null) {
     // 如果当前任务没过期，还要执行，但是没有时间了
     if (currentTask.expirationTime > currentTime && shouldYieldToHost()) {
+      console.log("current schedule is break");
       break;
     }
+    console.log(
+      "schedule task",
+      currentTask,
+      currentTask.callback ? currentTask.callback.name : null
+    );
 
     // 取出当前的任务中的回调函数 performConcurrentWorkOnRoot
     const callback = currentTask.callback;
     if (typeof callback === "function") {
+      const didUserCallbackTimeout = currentTask.expirationTime <= currentTime;
       currentTask.callback = null;
-      const continuationCallback = callback();
+      const continuationCallback = callback(didUserCallbackTimeout);
       if (typeof continuationCallback === "function") {
         // 执行任务产生了一个新任务
         currentTask.callback = continuationCallback;

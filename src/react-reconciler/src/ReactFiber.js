@@ -5,6 +5,7 @@ import {
   IndeterminateComponent,
 } from "./ReactWorkTags";
 import { NoFlags } from "./ReactFiberFlags";
+import { NoLanes } from "./ReactFiberLane";
 
 /**
  * fiber数据结构
@@ -43,6 +44,8 @@ export function FiberNode(tag, pendingProps, key) {
   this.index = 0;
   // 子fiber删除数组
   this.deletions = null;
+  // 优先级
+  this.lanes = NoLanes;
 }
 
 export function createFiber(tag, pendingProps, key) {

@@ -1,5 +1,5 @@
 import ReactSharedInternals from "shared/ReactSharedInternals";
-import { scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
+import { requestUpdateLane, scheduleUpdateOnFiber } from "./ReactFiberWorkLoop";
 import { enqueueConcurrentHookUpdate } from "./ReactFiberConcurrentUpdates";
 import {
   Passive as PassiveEffect,
@@ -10,6 +10,7 @@ import {
   Passive as HookPassive,
   Layout as HookLayout,
 } from "./ReactHookEffectTags";
+import { NoLanes } from "./ReactFiberLane";
 
 const { ReactCurrentDispatcher } = ReactSharedInternals;
 
@@ -227,23 +228,35 @@ function mountState(initialState) {
  * @returns setState 函数, 参数action
  */
 function dispatchSetState(fiber, queue, action) {
+  // 获取当前的更新赛道
+  const lane = requestUpdateLane();
   const update = {
+    lane, // 这个update的优先级
     action,
     hasEagerState: false, // 是否有提前计算新state
     eagerState: null, // 新state
     next: null,
   };
-  const { lastRenderedReducer, lastRenderedState } = queue;
-  const eagerState = lastRenderedReducer(lastRenderedState, action);
-  update.hasEagerState = true;
-  update.eagerState = eagerState;
-  if (Object.is(eagerState, lastRenderedState)) {
-    return;
+
+  // processUpdateQueue 处理update, 如果有跳过的，会把剩余的lanes记录到fiber
+  // 如果队列不空则不计算，lastRenderedState 就不是正确的基础state, 前面update还没执行，newState还没产生
+  if (
+    fiber.lanes === NoLanes &&
+    (fiber.alternate === null || fiber.alternate.lanes === NoLanes)
+  ) {
+    const { lastRenderedReducer, lastRenderedState } = queue;
+    const eagerState = lastRenderedReducer(lastRenderedState, action);
+    update.hasEagerState = true;
+    update.eagerState = eagerState;
+    if (Object.is(eagerState, lastRenderedState)) {
+      return;
+    }
   }
 
   // setState触发更新
-  const root = enqueueConcurrentHookUpdate(fiber, queue, update);
-  scheduleUpdateOnFiber(root);
+  const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane);
+  // 这里是为了把lane二进制合并到root.pendingLanes, 记录发生了那些优先级的事件
+  scheduleUpdateOnFiber(root, fiber, lane);
 }
 
 /**
@@ -335,6 +348,8 @@ function mountReducer(reducer, initialArg) {
   const queue = {
     pending: null,
     dispatch: null,
+    lastRenderedReducer: reducer,
+    lastRenderedState: initialArg,
   };
   const dispatch = dispatchReducerAction.bind(
     null,

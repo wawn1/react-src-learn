@@ -5,6 +5,8 @@ import {
   ContinuousEventPriority,
   DefaultEventPriority,
   DiscreteEventPriority,
+  getCurrentUpdatePriority,
+  setCurrentUpdatePriority,
 } from "react-reconciler/src/ReactEventPriorities";
 
 /**
@@ -41,7 +43,17 @@ function dispatchDiscreteEvent(
   container,
   nativeEvent
 ) {
-  dispatchEvent(domEventName, eventSystemFlags, container, nativeEvent);
+  // 在点击按钮的时候，需要设置更新优先级 1 非常高的优先级处理
+  // 先缓存老的更新优先级
+  const previousPriority = getCurrentUpdatePriority();
+  try {
+    // 把当前的更新优先级设置为离散事件优先级 1 同步的 用户点击等，优先级非常高
+    setCurrentUpdatePriority(DiscreteEventPriority);
+    dispatchEvent(domEventName, eventSystemFlags, container, nativeEvent);
+  } finally {
+    // 恢复之前的更新优先级
+    setCurrentUpdatePriority(previousPriority);
+  }
 }
 
 /**

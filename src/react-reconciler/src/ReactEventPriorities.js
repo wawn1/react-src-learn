@@ -17,6 +17,10 @@ export const DefaultEventPriority = DefaultLane; // 16
 // 空闲事件优先级
 export const IdleEventPriority = IdleLane; // 536870912
 
+// 一个全局变量，用于多个模块之前传递优先级
+// event listner产生event 设置优先级 => setState 读优先级 记录到update对象 和 更新队列 => 执行update时就可以用了
+// 例如：dispatchDiscreteEvent => dispatchSetState => enqueueConcurrentHookUpdate (缓存update)
+//  beginWork => updateHostRoot => processUpdateQueue (执行update with lane优先级)
 let currentUpdatePriority = NoLane;
 
 export function getCurrentUpdatePriority() {

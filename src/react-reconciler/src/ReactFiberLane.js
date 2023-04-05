@@ -1,3 +1,5 @@
+import { allowConcurrentByDefault } from "./ReactFeatureFlags";
+
 export const TotalLanes = 31;
 
 export const NoLanes = /*                        */ 0b0000000000000000000000000000000;
@@ -94,4 +96,15 @@ export function isSubsetOfLanes(set, subset) {
 
 export function mergeLanes(a, b) {
   return a | b;
+}
+
+// lanes是否有InputContinuousLane | DefaultLane
+// 默认车道是同步的，不启用时间分片
+export function includesBlockingLane(root, lanes) {
+  // 允许默认lane，并发渲染
+  if (allowConcurrentByDefault) {
+    return false;
+  }
+  const SyncDefaultLanes = InputContinuousLane | DefaultLane;
+  return (lanes & SyncDefaultLanes) !== NoLane;
 }
