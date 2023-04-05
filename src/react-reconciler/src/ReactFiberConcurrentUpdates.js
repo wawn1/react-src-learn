@@ -20,6 +20,7 @@ let concurrentQueuesIndex = 0;
 export function enqueueConcurrentHookUpdate(fiber, queue, update, lane) {
   // setState=>执行 dispatchReducerAction => 将update暂存到concurrentQueue
   enqueueUpdate(fiber, queue, update, lane);
+  console.log("after enqueue. concurrentQueues", concurrentQueues);
   return getRootForUpdatedFiber(fiber);
 }
 

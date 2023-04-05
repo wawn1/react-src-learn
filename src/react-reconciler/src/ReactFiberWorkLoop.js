@@ -5,6 +5,7 @@ import {
   UserBlockingPriority as UserBlockingSchedulerPriority,
   NormalPriority as NormalSchedulerPriority,
   IdlePriority as IdleSchedulerPriority,
+  cancelCallback as Scheduler_cancelCallback,
 } from "./Scheduler";
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
@@ -73,14 +74,30 @@ export function scheduleUpdateOnFiber(root, fiber, lane) {
 }
 
 function ensureRootIsScheduled(root) {
+  // 先获取当前schedule task
+  const existingCallbackNode = root.callbackNode;
   // 获取当前优先级最高的lane
-  const nextLanes = getNextLanes(root, NoLanes);
+  const nextLanes = getNextLanes(root, workInProgressRootRenderLanes);
+
   // 如果没有要执行的任务
   if (nextLanes === NoLanes) {
     return;
   }
 
   let newCallbackPriority = getHeighestPriorityLane(nextLanes);
+  // 获取现在根上正在运行的优先级
+  const existingCallbackPriority = root.callbackPriority;
+  // 一个函数里多次setState合并更新, 都在更新队列里，执行一次就行
+  if (existingCallbackPriority === newCallbackPriority) {
+    console.log("set state in on function. just one render. skip");
+    return;
+  }
+  // 如果进到这里执行了render, 说明是后面的render, 说明优先级更高的schedule task, 取消掉原来的低优先级更新
+  // 也就是覆盖式的更新，前面的不用执行了
+  if (existingCallbackNode !== null) {
+    console.log("cancel low task", existingCallbackNode);
+    Scheduler_cancelCallback(existingCallbackNode);
+  }
 
   // 可暂停的调度task schedule里最小堆存放的task
   let newCallbackNode;
@@ -121,6 +138,8 @@ function ensureRootIsScheduled(root) {
 
   // 缓存调度task到root, 在commitRoot后清空该变量，可以用于判断一次render渲染任务是否完成
   root.callbackNode = newCallbackNode;
+  // 缓存上次render的优先级
+  root.callbackPriority = newCallbackPriority;
 }
 
 /**
@@ -171,6 +190,7 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
   // 将任务函数继续传给schedule, schedule就不会删除task,并且下次5ms时间片，看task优先级情况取出执行，有时候可能不是优先级最高的
   if (root.callbackNode === originalCallbackNode) {
     // 可能多次performConcurrentWorkOnRoot, 很多次都是5ms执行render阶段，最后一次同步执行commitRoot, 清空缓存的callbackNode调度任务
+    console.log("add a schedule task.performConcurrentWorkOnRoot.");
     return performConcurrentWorkOnRoot.bind(null, root);
   }
 
@@ -208,6 +228,7 @@ function prepareFreshStack(root, renderLanes) {
 }
 
 function renderRootSync(root, renderLanes) {
+  console.log("renderRootSync");
   if (
     root !== workInProgressRoot ||
     workInProgressRootRenderLanes !== renderLanes
@@ -218,6 +239,7 @@ function renderRootSync(root, renderLanes) {
   // dfs 遍历新的fiber树
   // mount时，边遍历边生成，遍历一个fiber，生成children fiber链表
   workLoopSync();
+  return RootCompleted;
 }
 
 /**
@@ -231,6 +253,7 @@ function renderRootConCurrent(root, lanes) {
   // 因为构建fiber树的过程中，此方法会反复进入，
   // 只在第一次创建根fiber
   if (workInProgressRoot !== root || workInProgressRootRenderLanes !== lanes) {
+    console.log("create root node");
     prepareFreshStack(root, lanes);
   }
 
@@ -247,17 +270,19 @@ function renderRootConCurrent(root, lanes) {
 // dfs beginWork 中左
 // dfs completeWork 左右中 无child就可以开始
 function workLoopSync() {
+  console.log("workLoopSync");
   while (workInProgress !== null) {
     performUnitOfWork(workInProgress);
   }
 }
 
 function workLoopConcurrent() {
+  console.log("workLoopConcurrent");
   // 如果有下一个要构建的fiber，并且时间片没有过期
   while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress);
-    let startTimeTemp = Date.now();
-    while (Date.now() - startTimeTemp < 10) {}
+    // let startTimeTemp = Date.now();
+    // while (Date.now() - startTimeTemp < 1000) {}
     console.log("shouldYield", shouldYield(), workInProgress);
   }
 }
@@ -327,6 +352,7 @@ function commitRootImpl(root) {
   workInProgressRoot = null;
   workInProgressRootRenderLanes = NoLanes;
   root.callbackNode = null;
+  root.callbackPriority = null;
   console.log("commitRoot~~~~~~~~~~~~~~~~~~~~~~~~~~~");
   const { finishedWork } = root; // finishedWork 新fiber树的根fiber, root是FiberRootNode
 

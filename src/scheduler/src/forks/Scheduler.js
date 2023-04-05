@@ -149,11 +149,11 @@ function workLoop(startTime) {
   while (currentTask !== null) {
     // 如果当前任务没过期，还要执行，但是没有时间了
     if (currentTask.expirationTime > currentTime && shouldYieldToHost()) {
-      console.log("current schedule is break");
+      console.log("Scheduler:: current schedule is break");
       break;
     }
     console.log(
-      "schedule task",
+      "Scheduler:: handle schedule task",
       currentTask,
       currentTask.callback ? currentTask.callback.name : null
     );
@@ -164,9 +164,11 @@ function workLoop(startTime) {
       const didUserCallbackTimeout = currentTask.expirationTime <= currentTime;
       currentTask.callback = null;
       const continuationCallback = callback(didUserCallbackTimeout);
+      console.log("Scheduler:: task time cost", getCurrentTime() - currentTime);
       if (typeof continuationCallback === "function") {
         // 执行任务产生了一个新任务
         currentTask.callback = continuationCallback;
+        console.log("Scheduler:: end===========");
         return true; // 还有任务执行
       }
       // 弹出最高优先级任务
@@ -178,6 +180,7 @@ function workLoop(startTime) {
     currentTask = peek(taskQueue);
   }
 
+  console.log("Scheduler:: end===========");
   // 还有任务
   if (currentTask !== null) {
     return true;
@@ -189,6 +192,7 @@ function workLoop(startTime) {
 // 最小堆 这一次循环执行是否超过5ms
 function shouldYieldToHost() {
   const timeElapsed = getCurrentTime() - startTime;
+  console.log("Scheduler:: timeElapsed", timeElapsed);
   if (timeElapsed < frameInterval) {
     return false;
   }
@@ -208,6 +212,10 @@ function schedulePerformWorkUntilDeadline() {
 }
 
 function performWorkUntilDeadline() {
+  console.log(
+    "Scheduler:: schedule start===========. min heap size",
+    taskQueue.length
+  );
   if (scheduleHostCallback) {
     // workLoop
     // 先获取开始执行任务的时间
@@ -230,6 +238,10 @@ function performWorkUntilDeadline() {
   }
 }
 
+function unstable_cancelCallback(task) {
+  task.callback = null;
+}
+
 export {
   scheduleCallback as unstable_scheduleCallback,
   shouldYieldToHost as unstable_shouldYield,
@@ -238,4 +250,5 @@ export {
   NormalPriority as unstable_NormalPriority,
   LowPriority as unstable_LowPriority,
   IdlePriority as unstable_IdlePriority,
+  unstable_cancelCallback,
 };

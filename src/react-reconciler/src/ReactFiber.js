@@ -103,6 +103,7 @@ export function createWorkInProgress(current, pendingProps) {
  */
 export function createFiberFromElement(element) {
   const { type, key, props: pendingProps } = element;
+  console.log("createFiberFromElement");
   return createFiberFromTypeAndProps(type, key, pendingProps);
 }
 

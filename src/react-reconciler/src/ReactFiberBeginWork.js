@@ -75,6 +75,7 @@ export function mountIndeterminateComponent(
   Component,
   renderLanes
 ) {
+  console.log("mount hook componet");
   const props = workInProgress.pendingProps;
   // const value = Component(props);
   const value = renderWithHooks(current, workInProgress, Component, props);
@@ -98,6 +99,7 @@ export function updateFunctionComponent(
   newProps,
   renderLanes
 ) {
+  console.log("update hook component");
   // 执行一遍函数组件，包含hook的执行
   const nextChildren = renderWithHooks(
     current,

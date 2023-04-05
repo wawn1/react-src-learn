@@ -7,26 +7,24 @@ function counter(state, action) {
 }
 
 function App() {
-  const [number, setNumber] = React.useState(0);
+  const [numbers, setNumbers] = React.useState(new Array(10).fill("A"));
+
   React.useEffect(() => {
-    console.log("useEffect1");
-    return () => {
-      console.log("destroy useEffect1");
-    };
+    setNumbers((numbers) => numbers.map((number) => number + "B"));
   }, []);
-  React.useLayoutEffect(() => {
-    console.log("useLayoutEffect2");
-    return () => {
-      console.log("destroy useLayoutEffect2");
-    };
-  });
-  React.useEffect(() => {
-    console.log("useEffect3");
-    return () => {
-      console.log("destroy useEffect3");
-    };
-  });
-  return <button onClick={() => setNumber(number + 1)}>{number}</button>;
+
+  return (
+    <button
+      onClick={() => {
+        setNumbers((numbers) => numbers.map((number) => number + "C"));
+        setNumbers((numbers) => numbers.map((number) => number + "C"));
+        setNumbers((numbers) => numbers.map((number) => number + "C"));
+        setNumbers((numbers) => numbers.map((number) => number + "C"));
+      }}
+    >
+      {numbers.join("")}
+    </button>
+  );
 }
 
 let element = <App />;

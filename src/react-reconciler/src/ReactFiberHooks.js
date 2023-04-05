@@ -240,18 +240,18 @@ function dispatchSetState(fiber, queue, action) {
 
   // processUpdateQueue 处理update, 如果有跳过的，会把剩余的lanes记录到fiber
   // 如果队列不空则不计算，lastRenderedState 就不是正确的基础state, 前面update还没执行，newState还没产生
-  if (
-    fiber.lanes === NoLanes &&
-    (fiber.alternate === null || fiber.alternate.lanes === NoLanes)
-  ) {
-    const { lastRenderedReducer, lastRenderedState } = queue;
-    const eagerState = lastRenderedReducer(lastRenderedState, action);
-    update.hasEagerState = true;
-    update.eagerState = eagerState;
-    if (Object.is(eagerState, lastRenderedState)) {
-      return;
-    }
-  }
+  // if (
+  //   fiber.lanes === NoLanes &&
+  //   (fiber.alternate === null || fiber.alternate.lanes === NoLanes)
+  // ) {
+  //   const { lastRenderedReducer, lastRenderedState } = queue;
+  //   const eagerState = lastRenderedReducer(lastRenderedState, action);
+  //   update.hasEagerState = true;
+  //   update.eagerState = eagerState;
+  //   if (Object.is(eagerState, lastRenderedState)) {
+  //     return;
+  //   }
+  // }
 
   // setState触发更新
   const root = enqueueConcurrentHookUpdate(fiber, queue, update, lane);
@@ -376,7 +376,9 @@ function dispatchReducerAction(fiber, queue, action) {
     next: null,
   };
   // 把当前更新放到更新队列里，并返回根fiber
+  console.log("set State reducer");
   const root = enqueueConcurrentHookUpdate(fiber, queue, update);
+  console.log("scheduleUpdateOnFiber");
   scheduleUpdateOnFiber(root, fiber);
 }
 

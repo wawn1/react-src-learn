@@ -63,13 +63,22 @@ export function markRootUpdated(root, updateLane) {
 }
 
 // 获取下一个最高优先级的lane
-export function getNextLanes(root) {
+export function getNextLanes(root, wipLanes) {
   // 先获取所有的待生效lane
   const pendingLanes = root.pendingLanes;
   if (pendingLanes === NoLanes) {
     return NoLanes;
   }
+
+  // 获取所有车道中最高优先级的车道
   const nextLanes = getHeighestPriorityLanes(pendingLanes);
+
+  if (wipLanes !== NoLane && wipLanes !== nextLanes) {
+    // 渲染中的车道优先级更高，返回渲染中的车道
+    if (nextLanes > wipLanes) {
+      return wipLanes;
+    }
+  }
   return nextLanes;
 }
 
