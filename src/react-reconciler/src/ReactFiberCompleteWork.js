@@ -11,7 +11,12 @@ import {
   HostText,
   FunctionComponent,
 } from "./ReactWorkTags";
-import { NoFlags, Update } from "./ReactFiberFlags";
+import { NoFlags, Update, Ref } from "./ReactFiberFlags";
+
+// 给fiber 添加ref副作用标记
+function markRef(workInProgress) {
+  workInProgress.flags |= Ref;
+}
 
 /**
  * completework是左右中，当前节点的子fiber链表对应dom已经构建完
@@ -101,6 +106,11 @@ export function completeWork(current, workInProgress) {
         // 如果老fiber存在，并且老fiber上有真实dom
         const { type } = workInProgress;
         updateHostComponent(current, workInProgress, type, newProps);
+
+        // 前后ref对象地址不同，标记要更新ref
+        if (current.ref !== workInProgress.ref && workInProgress.ref !== null) {
+          markRef(workInProgress);
+        }
       } else {
         // mount阶段
         // 如果是原生节点的fiber，创建dom放到fiber.stateNode
@@ -113,6 +123,12 @@ export function completeWork(current, workInProgress) {
 
         // 将prop 设置到dom上
         finalizeInitialChildren(instance, type, newProps);
+
+        // 标记要挂载ref
+        console.log(workInProgress.ref, ";;;;;;;;;;;;;;;;");
+        if (workInProgress.ref !== null) {
+          markRef(workInProgress);
+        }
       }
     case FunctionComponent:
       bubbleProperties(workInProgress);

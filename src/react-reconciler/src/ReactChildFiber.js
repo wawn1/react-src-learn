@@ -95,6 +95,7 @@ function createChildReconciler(shouldTrackSideEffects) {
           deleteRemainingChildren(returnFiber, child.sibling);
           // 如果key和类型一样，则复用
           const existing = useFiber(child, element.props);
+          existing.ref = element.ref;
           existing.return = returnFiber;
           return existing;
         } else {
@@ -110,6 +111,7 @@ function createChildReconciler(shouldTrackSideEffects) {
     }
 
     const created = createFiberFromElement(element);
+    created.ref = element.ref;
     created.return = returnFiber;
     return created;
   }
@@ -159,6 +161,7 @@ function createChildReconciler(shouldTrackSideEffects) {
       // key，type都相同，可以复用老fiber和真实dom
       if (current.type === elementType) {
         const existing = useFiber(current, element.props);
+        existing.ref = element.ref;
         existing.return = returnFiber;
         return existing;
       }
@@ -168,6 +171,7 @@ function createChildReconciler(shouldTrackSideEffects) {
 
     // 创建新的 samekeydifferenttype 2  这里创建的新fiber没有alternate, 后面用于判断是否复用成功
     const created = createFiberFromElement(element);
+    created.ref = element.ref;
     created.return = returnFiber;
     return created;
   }
@@ -232,6 +236,7 @@ function createChildReconciler(shouldTrackSideEffects) {
       return created;
     } else {
       const existing = useFiber(current, textContent);
+      existing.ref = element.ref;
       existing.return = returnFiber;
       return existing;
     }
@@ -421,6 +426,7 @@ function createChildReconciler(shouldTrackSideEffects) {
       switch (newChild.$$typeof) {
         case REACT_ELEMENT_TYPE:
           const created = createFiberFromElement(newChild);
+          created.ref = newChild.ref;
           created.return = returnFiber;
           return created;
         default:

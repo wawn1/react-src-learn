@@ -78,7 +78,7 @@ function ensureRootIsScheduled(root) {
   const existingCallbackNode = root.callbackNode;
   // 获取当前优先级最高的lane
   const nextLanes = getNextLanes(root, workInProgressRootRenderLanes);
-
+  console.log("current render lane", nextLanes, workInProgressRootRenderLanes);
   // 如果没有要执行的任务
   if (nextLanes === NoLanes) {
     return;
@@ -93,7 +93,7 @@ function ensureRootIsScheduled(root) {
     return;
   }
   // 如果进到这里执行了render, 说明是后面的render, 说明优先级更高的schedule task, 取消掉原来的低优先级更新
-  // 也就是覆盖式的更新，前面的不用执行了
+  // useEffect 里的setState 是默认优先级32， onClick的setState优先级是1
   if (existingCallbackNode !== null) {
     console.log("cancel low task", existingCallbackNode);
     Scheduler_cancelCallback(existingCallbackNode);
@@ -253,7 +253,7 @@ function renderRootConCurrent(root, lanes) {
   // 因为构建fiber树的过程中，此方法会反复进入，
   // 只在第一次创建根fiber
   if (workInProgressRoot !== root || workInProgressRootRenderLanes !== lanes) {
-    console.log("create root node");
+    console.log("create root node", lanes);
     prepareFreshStack(root, lanes);
   }
 

@@ -9,11 +9,11 @@ import {
 } from "./ReactFiberLane";
 
 // 离散事件优先级 click onchange
-export const DiscreteEventPriority = SyncLane; // 1
+export const DiscreteEventPriority = SyncLane; // 2
 // 连续事件的优先级 mousemove
-export const ContinuousEventPriority = InputContinuousLane; // 4
+export const ContinuousEventPriority = InputContinuousLane; // 8
 // 默认事件车道
-export const DefaultEventPriority = DefaultLane; // 16
+export const DefaultEventPriority = DefaultLane; // 32
 // 空闲事件优先级
 export const IdleEventPriority = IdleLane; // 536870912
 

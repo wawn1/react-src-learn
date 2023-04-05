@@ -2,7 +2,7 @@ import hasOwnProperty from "shared/hasOwnProperty";
 import { REACT_ELEMENT_TYPE } from "shared/ReactSymbols";
 
 function hasValidRef(config) {
-  return config.key !== undefined;
+  return config.ref !== undefined;
 }
 
 const RESERVED_PROPS = {

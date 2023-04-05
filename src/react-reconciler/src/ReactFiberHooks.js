@@ -40,6 +40,7 @@ const HooksDispatcherOnMount = {
   useState: mountState,
   useEffect: mountEffect,
   useLayoutEffect: mountLayoutEffect,
+  useRef: mountRef,
 };
 
 const HooksDispatcherOnUpdate = {
@@ -47,7 +48,26 @@ const HooksDispatcherOnUpdate = {
   useState: updateState,
   useEffect: updateEffect,
   useLayoutEffect: updateLayoutEffect,
+  useRef: updateRef,
 };
+
+function mountRef(initialValue) {
+  // 创建一个hook
+  const hook = mountWorkInProgressHook();
+  // 将ref对象存储到hook上
+  const ref = {
+    current: initialValue,
+  };
+  hook.memoizedState = ref;
+  return ref;
+}
+
+function updateRef(initialValue) {
+  // 复制老hook 生成新hook
+  // 保持ref对象不变就行了
+  const hook = updateWorkInProgressHook();
+  return hook.memoizedState;
+}
 
 function mountLayoutEffect(create, deps) {
   // 标记fiber Update, 标记hook layout effect

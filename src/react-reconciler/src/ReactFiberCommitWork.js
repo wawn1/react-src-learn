@@ -10,6 +10,7 @@ import {
   Update,
   Passive,
   LayoutMask,
+  Ref,
 } from "./ReactFiberFlags";
 import {
   FunctionComponent,
@@ -285,6 +286,11 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
       recursivelyTraverseMutationEffects(root, finishedWork);
       // 处理自身的副作用
       commitReconciliationEffects(finishedWork);
+      // 处理ref副作用
+      if (flags & Ref) {
+        commitAttachRef(finishedWork);
+      }
+
       // 处理DOM更新
       if (flags & Update) {
         // 获取真实dom
@@ -313,6 +319,18 @@ export function commitMutationEffectsOnFiber(finishedWork, root) {
     }
     default:
       break;
+  }
+}
+
+function commitAttachRef(finishedWork) {
+  const ref = finishedWork.ref;
+  if (ref !== null) {
+    const instance = finishedWork.stateNode;
+    if (typeof ref === "function") {
+      ref(instance);
+    } else {
+      ref.current = instance;
+    }
   }
 }
 

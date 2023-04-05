@@ -46,6 +46,7 @@ export function FiberNode(tag, pendingProps, key) {
   this.deletions = null;
   // 优先级
   this.lanes = NoLanes;
+  this.ref = null;
 }
 
 export function createFiber(tag, pendingProps, key) {
@@ -94,6 +95,7 @@ export function createWorkInProgress(current, pendingProps) {
   workInProgress.updateQueue = current.updateQueue;
   workInProgress.sibling = current.sibling;
   workInProgress.index = current.index;
+  workInProgress.ref = current.ref;
   return workInProgress;
 }
 

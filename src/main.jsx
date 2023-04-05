@@ -9,16 +9,16 @@ function counter(state, action) {
 function App() {
   const [numbers, setNumbers] = React.useState(new Array(10).fill("A"));
 
+  const buttonRef = React.useRef();
+
   React.useEffect(() => {
-    setNumbers((numbers) => numbers.map((number) => number + "B"));
+    console.log("...........................", buttonRef.current);
   }, []);
 
   return (
     <button
+      ref={buttonRef}
       onClick={() => {
-        setNumbers((numbers) => numbers.map((number) => number + "C"));
-        setNumbers((numbers) => numbers.map((number) => number + "C"));
-        setNumbers((numbers) => numbers.map((number) => number + "C"));
         setNumbers((numbers) => numbers.map((number) => number + "C"));
       }}
     >
