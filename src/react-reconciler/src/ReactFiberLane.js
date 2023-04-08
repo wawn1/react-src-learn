@@ -52,6 +52,9 @@ export const IdleLane = /*                        */ 0b0100000000000000000000000
 
 export const OffscreenLane = /*                   */ 0b1000000000000000000000000000000;
 
+// 没有时间戳
+export const NoTimestamp = -1;
+
 /**
  * 将lane标记到root 待生效的pendingLanes
  * @param {*} root
@@ -116,4 +119,86 @@ export function includesBlockingLane(root, lanes) {
   }
   const SyncDefaultLanes = InputContinuousLane | DefaultLane;
   return (lanes & SyncDefaultLanes) !== NoLane;
+}
+
+/**
+ * 取最左侧的1的索引
+ * @param {*} lanes
+ * @returns
+ */
+function pickArbitraryLaneIndex(lanes) {
+  // clz32返回最左侧的1的左边0的个数, 总32长度
+  // 索引0到31
+  return 31 - Math.clz32(lanes);
+}
+
+export function markStarvedLanesAsExpired(root, currentTime) {
+  // 获取当前有更新的赛道
+  const pendingLanes = root.pendingLanes;
+  // 记录每个赛道上的过期时间
+  const expirationTimes = root.expirationTimes;
+  let lanes = pendingLanes;
+  while (lanes > 0) {
+    // 获取最左侧1的索引
+    const index = pickArbitraryLaneIndex(lanes);
+    // 获取当前最小优先级lane
+    const lane = 1 << index;
+    const expirationTime = expirationTimes[index];
+    // 如果此赛道上没有过期时间，说明没有为此车道设置过期时间
+    if (expirationTime === NoTimestamp) {
+      expirationTimes[index] = computeExpirationTime(lane, currentTime);
+    } else if (expirationTime <= currentTime) {
+      // 如果此车道的过期时间已经小于等于当前时间, 过期了
+      // 把此车道添加到过期lane里
+      root.expirationLanes |= lane;
+    }
+    // 从lanes去掉lane
+    lanes &= ~lane;
+  }
+}
+
+//计算过期时间，当前时间+间隔时间
+function computeExpirationTime(lane, currentTime) {
+  switch (lane) {
+    case SyncLane:
+    case InputContinuousLane:
+      return currentTime + 250;
+    case DefaultLane:
+      return currentTime + 5000;
+    case IdleLane:
+      return NoTimestamp;
+    default:
+      return NoTimestamp;
+  }
+}
+
+// 初始化expirationTimes 数组，每个lane的过期时间数组
+export function createLaneMap(initial) {
+  const laneMap = [];
+  for (let i = 0; i < TotalLanes; i++) {
+    laneMap.push(initial);
+  }
+  return laneMap;
+}
+
+// 是否包含过期lane
+export function includesExpiredLane(root, lanes) {
+  return (lanes & root.expirationLanes) !== NoLanes;
+}
+
+// 删除除了remainingLanes的其他lane的过期时间
+export function markRootFinished(root, remainingLanes) {
+  const noLongerPendingLanes = root.pendingLanes & ~remainingLanes;
+  root.pendingLanes = remainingLanes;
+  const expirationTimes = root.expirationTimes;
+  let lanes = noLongerPendingLanes;
+  // 清除所有lane的过期时间
+  while (lanes > 0) {
+    // 获取最左侧1的索引
+    const index = pickArbitraryLaneIndex(lanes);
+    const lane = 1 << index;
+    // 清除lane的过期时间
+    expirationTimes[index] = NoTimestamp;
+    lanes &= ~lane;
+  }
 }

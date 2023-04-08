@@ -12,6 +12,7 @@ import {
 import { mountChildFibers, reconcileChildFibers } from "./ReactChildFiber";
 import { shouldSetTextContent } from "react-dom-bindings/src/client/ReactDOMHostConfig";
 import { renderWithHooks } from "./ReactFiberHooks";
+import { NoLanes } from "./ReactFiberLane";
 
 /**
  *
@@ -78,7 +79,13 @@ export function mountIndeterminateComponent(
   console.log("mount hook componet");
   const props = workInProgress.pendingProps;
   // const value = Component(props);
-  const value = renderWithHooks(current, workInProgress, Component, props);
+  const value = renderWithHooks(
+    current,
+    workInProgress,
+    Component,
+    props,
+    renderLanes
+  );
   workInProgress.tag = FunctionComponent;
   reconcileChildren(current, workInProgress, value);
   return workInProgress.child;
@@ -105,7 +112,8 @@ export function updateFunctionComponent(
     current,
     workInProgress,
     Component,
-    newProps
+    newProps,
+    renderLanes
   );
   // 打flags
   reconcileChildren(current, workInProgress, nextChildren);
@@ -119,6 +127,7 @@ export function updateFunctionComponent(
  */
 export function beginWork(current, workInProgress, renderLanes) {
   console.log("beginWork", current);
+  workInProgress.lanes = NoLanes;
   switch (workInProgress.tag) {
     // 因为在eract里组件其实有2种，一种是函数组件，一种是类组件
     case IndeterminateComponent:

@@ -1,6 +1,10 @@
 import { createFiberRoot } from "./ReactFiberRoot";
 import { createUpdate, enqueueUpdate } from "./ReactFiberClassUpdateQueue";
-import { scheduleUpdateOnFiber, requestUpdateLane } from "./ReactFiberWorkLoop";
+import {
+  scheduleUpdateOnFiber,
+  requestUpdateLane,
+  requestEventTime,
+} from "./ReactFiberWorkLoop";
 
 // 返回一个对象 FiberRootNode{containerInfo}
 export function createContainer(containerInfo) {
@@ -19,6 +23,7 @@ export function createContainer(containerInfo) {
  */
 export function updateContainer(element, container) {
   const current = container.current;
+  const eventTime = requestEventTime();
 
   // 请求一个更新车道
   const lane = requestUpdateLane(current);
@@ -29,5 +34,5 @@ export function updateContainer(element, container) {
   const root = enqueueUpdate(current, update, lane);
 
   // 2. 执行更新
-  scheduleUpdateOnFiber(root, current, lane);
+  scheduleUpdateOnFiber(root, current, lane, eventTime);
 }

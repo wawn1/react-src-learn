@@ -42,7 +42,7 @@ import {
  */
 
 function getCurrentTime() {
-  return performance.now();
+  return performance.now(); // 返回了从页面加载开始所经过的时间
 }
 
 // Max 31 bit integer. The max integer size in V8 for 32-bit systems.
@@ -251,4 +251,5 @@ export {
   LowPriority as unstable_LowPriority,
   IdlePriority as unstable_IdlePriority,
   unstable_cancelCallback,
+  getCurrentTime as now,
 };

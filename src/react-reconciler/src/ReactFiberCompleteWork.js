@@ -12,6 +12,7 @@ import {
   FunctionComponent,
 } from "./ReactWorkTags";
 import { NoFlags, Update, Ref } from "./ReactFiberFlags";
+import { mergeLanes, NoLanes } from "./ReactFiberLane";
 
 // 给fiber 添加ref副作用标记
 function markRef(workInProgress) {
@@ -125,7 +126,6 @@ export function completeWork(current, workInProgress) {
         finalizeInitialChildren(instance, type, newProps);
 
         // 标记要挂载ref
-        console.log(workInProgress.ref, ";;;;;;;;;;;;;;;;");
         if (workInProgress.ref !== null) {
           markRef(workInProgress);
         }
@@ -139,15 +139,22 @@ export function completeWork(current, workInProgress) {
   }
 }
 
+// 将childLanes, flags 冒泡上去
 function bubbleProperties(workInProgress) {
+  let newChildLanes = NoLanes;
   let subtreeFlags = NoFlags;
 
   // 将child链表所有更新，累计到fiber的subtreeFlags，用于性能优化，如果子fiber没有变更，就不用dfs处理
   let child = workInProgress.child;
   while (child !== null) {
+    newChildLanes = mergeLanes(
+      newChildLanes,
+      mergeLanes(child.lanes, child.childLanes)
+    );
     subtreeFlags |= child.subtreeFlags;
     subtreeFlags |= child.flags;
     child = child.sibling;
   }
+  workInProgress.childLanes = newChildLanes;
   workInProgress.subtreeFlags = subtreeFlags;
 }

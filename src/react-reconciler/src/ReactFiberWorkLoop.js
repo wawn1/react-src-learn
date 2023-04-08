@@ -6,6 +6,7 @@ import {
   NormalPriority as NormalSchedulerPriority,
   IdlePriority as IdleSchedulerPriority,
   cancelCallback as Scheduler_cancelCallback,
+  now,
 } from "./Scheduler";
 import { createWorkInProgress } from "./ReactFiber";
 import { beginWork } from "./ReactFiberBeginWork";
@@ -25,6 +26,11 @@ import {
   SyncLane,
   getHeighestPriorityLane,
   includesBlockingLane,
+  markStarvedLanesAsExpired,
+  NoTimestamp,
+  includesExpiredLane,
+  mergeLanes,
+  markRootFinished,
 } from "./ReactFiberLane";
 import {
   getCurrentUpdatePriority,
@@ -63,19 +69,24 @@ const RootCompleted = 5;
 // 当前渲染工作结束的时候，当前fiber树处于什么状态，默认是进行中
 let workInProgressRootExitStatus = RootInProgress;
 
+// 当前事件发生的时间，缓存到全局
+let currentEventTime = NoTimestamp;
+
 /**
  * 刷新页面，重新render
  * @param {*} root
  */
-export function scheduleUpdateOnFiber(root, fiber, lane) {
+export function scheduleUpdateOnFiber(root, fiber, lane, eventTime) {
   // 标记root上有哪些lane等待执行
   markRootUpdated(root, lane);
-  ensureRootIsScheduled(root);
+  ensureRootIsScheduled(root, eventTime);
 }
 
-function ensureRootIsScheduled(root) {
+function ensureRootIsScheduled(root, currentTime) {
   // 先获取当前schedule task
   const existingCallbackNode = root.callbackNode;
+  // 把所有饿死的赛道标记为过期
+  markStarvedLanesAsExpired(root, currentTime);
   // 获取当前优先级最高的lane
   const nextLanes = getNextLanes(root, workInProgressRootRenderLanes);
   console.log("current render lane", nextLanes, workInProgressRootRenderLanes);
@@ -89,7 +100,7 @@ function ensureRootIsScheduled(root) {
   const existingCallbackPriority = root.callbackPriority;
   // 一个函数里多次setState合并更新, 都在更新队列里，执行一次就行
   if (existingCallbackPriority === newCallbackPriority) {
-    console.log("set state in on function. just one render. skip");
+    console.log("set state in one function. just one render. skip");
     return;
   }
   // 如果进到这里执行了render, 说明是后面的render, 说明优先级更高的schedule task, 取消掉原来的低优先级更新
@@ -168,8 +179,16 @@ function performConcurrentWorkOnRoot(root, didTimeout) {
   if (lanes === NoLanes) {
     return null;
   }
-  // 如果不包含阻塞的车道，并且没有超时，就可以并行渲染（启用时间分片）
-  const shouldTimeSlice = !includesBlockingLane(root, lanes) && !didTimeout;
+  // 如果不包含阻塞的车道，并且没有超时
+  // 默认更新车道是同步的，修改allowConcurrentByDefault标记才能启用时间分片
+  const nonIncludesBlockingLane = !includesBlockingLane(root, lanes);
+  // 是否不包含阻塞车道
+  const nonIncludesExpiredLane = !includesExpiredLane(root, lanes);
+  // 时间片没有过期
+  const nonTimeout = !didTimeout;
+  // 是否可以启动时间分片，可中断的render阶段
+  const shouldTimeSlice =
+    nonIncludesBlockingLane && nonIncludesExpiredLane && nonTimeout;
   console.log("shouldTimeSlice", shouldTimeSlice);
 
   // render阶段是否完成
@@ -281,8 +300,8 @@ function workLoopConcurrent() {
   // 如果有下一个要构建的fiber，并且时间片没有过期
   while (workInProgress !== null && !shouldYield()) {
     performUnitOfWork(workInProgress);
-    // let startTimeTemp = Date.now();
-    // while (Date.now() - startTimeTemp < 1000) {}
+    let startTimeTemp = Date.now();
+    while (Date.now() - startTimeTemp < 6) {}
     console.log("shouldYield", shouldYield(), workInProgress);
   }
 }
@@ -348,13 +367,24 @@ function commitRoot(root) {
 }
 
 function commitRootImpl(root) {
+  console.log("commitRoot~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+
   // 清空
   workInProgressRoot = null;
   workInProgressRootRenderLanes = NoLanes;
   root.callbackNode = null;
   root.callbackPriority = null;
-  console.log("commitRoot~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+
   const { finishedWork } = root; // finishedWork 新fiber树的根fiber, root是FiberRootNode
+  // 合并统计当前新的根上的剩下的车道
+  const remainingLanes = mergeLanes(
+    finishedWork.lanes,
+    finishedWork.childLanes
+  );
+  // 清空除了remainingLanes的其他lane的 expirationTimes
+  markRootFinished(root, remainingLanes);
+
+  console.log("commit", finishedWork.child.memoizedState.memoizedState[0]);
 
   // 如果子树或者自己有 effect副作用
   if (
@@ -393,6 +423,8 @@ function commitRootImpl(root) {
   }
   // current指向新fiber树
   root.current = finishedWork;
+  // 在提交之后，因为根上可能会有跳过的更新，所以需要重新再次调度
+  ensureRootIsScheduled(root, now());
 }
 
 // 获取优先级
@@ -408,4 +440,10 @@ export function requestUpdateLane() {
   // 使用事件车道
   const eventLane = getCurrentEventPriority();
   return eventLane;
+}
+
+// 请求当前时间
+export function requestEventTime() {
+  currentEventTime = now();
+  return currentEventTime;
 }

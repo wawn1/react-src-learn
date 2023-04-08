@@ -47,6 +47,9 @@ export function FiberNode(tag, pendingProps, key) {
   // 优先级
   this.lanes = NoLanes;
   this.ref = null;
+
+  //子fiber的汇总lane
+  this.childLanes = NoLanes;
 }
 
 export function createFiber(tag, pendingProps, key) {
@@ -96,6 +99,9 @@ export function createWorkInProgress(current, pendingProps) {
   workInProgress.sibling = current.sibling;
   workInProgress.index = current.index;
   workInProgress.ref = current.ref;
+  workInProgress.flags = current.flags;
+  workInProgress.lanes = current.lanes;
+  workInProgress.childLanes = current.childLanes;
   return workInProgress;
 }
 
